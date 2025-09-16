@@ -11,6 +11,7 @@ import ImpactDashboard from './pages/ImpactDashboard';
 import CommunityPage from './pages/CommunityPage';
 import SearchPage from './pages/SearchPage';
 import ProfilePage from './pages/ProfilePage';
+import ApiIntegrationExample from './components/ApiIntegrationExample';
 import ChatBot from './components/ChatBot';
 import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
@@ -47,6 +48,7 @@ function App() {
                 <Route path="/community" element={<CommunityPage />} />
                 <Route path="/search" element={<SearchPage />} />
                 <Route path="/profile" element={<ProfilePage />} />
+                <Route path="/api-demo" element={<ApiIntegrationExample />} />
               </Routes>
             </main>
             <ChatBot />

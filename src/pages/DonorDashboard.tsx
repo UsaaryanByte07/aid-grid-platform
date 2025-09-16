@@ -13,10 +13,12 @@ import {
   CheckCircle,
   Filter,
   Search,
-  BookOpen
+  BookOpen,
+  Code
 } from 'lucide-react';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useAuth } from '../context/AuthContext';
+import ApiIntegrationExample from '../components/ApiIntegrationExample';
 
 const DonorDashboard: React.FC = () => {
   const { user } = useAuth();
@@ -104,7 +106,8 @@ const DonorDashboard: React.FC = () => {
     { id: 'overview', name: 'Overview', icon: TrendingUp },
     { id: 'requests', name: 'Live Requests', icon: AlertCircle },
     { id: 'leaderboard', name: 'Leaderboard', icon: Award },
-    { id: 'community', name: 'Community', icon: Users }
+    { id: 'community', name: 'Community', icon: Users },
+    { id: 'api-demo', name: 'API Demo', icon: Code }
   ];
 
   return (
@@ -532,6 +535,10 @@ const DonorDashboard: React.FC = () => {
                 </div>
               </div>
             </div>
+          )}
+
+          {activeTab === 'api-demo' && (
+            <ApiIntegrationExample />
           )}
         </motion.div>
       </div>
