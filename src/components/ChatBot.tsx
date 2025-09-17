@@ -48,58 +48,57 @@ const ChatBot: React.FC = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const handleSendMessage = async () => {
-    if (!inputText.trim()) return;
+
+  // Unified send handler for both input and quick replies
+  const handleSend = async (overrideText?: string) => {
+    const textToSend = overrideText !== undefined ? overrideText : inputText;
+    if (!textToSend.trim()) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
-      text: inputText,
+      text: textToSend,
       isBot: false,
       timestamp: new Date(),
     };
 
-    setMessages(prev => [...prev, userMessage]);
+    setMessages((prev) => [...prev, userMessage]);
     setInputText('');
     setIsTyping(true);
 
-    // Simulate bot response
-    setTimeout(() => {
-      const botResponse = generateBotResponse(inputText);
+    try {
+      const res = await fetch("http://localhost:5500/api/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ message: textToSend }),
+      });
+
+      const data = await res.json();
+
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: botResponse,
+        text: data.reply || "Sorry, I couldn't respond.",
         isBot: true,
         timestamp: new Date(),
       };
-      
-      setMessages(prev => [...prev, botMessage]);
+      setMessages((prev) => [...prev, botMessage]);
+    } catch (err) {
+      const botMessage: Message = {
+        id: (Date.now() + 2).toString(),
+        text: "Error: Could not reach AI service.",
+        isBot: true,
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, botMessage]);
+    } finally {
       setIsTyping(false);
-    }, 1500);
-  };
-
-  const generateBotResponse = (input: string): string => {
-    const lowercaseInput = input.toLowerCase();
-    
-    if (lowercaseInput.includes('eligible') || lowercaseInput.includes('qualify')) {
-      return botResponses.eligible;
-    } else if (lowercaseInput.includes('eat') || lowercaseInput.includes('food') || lowercaseInput.includes('before')) {
-      return botResponses.eat;
-    } else if (lowercaseInput.includes('often') || lowercaseInput.includes('frequency') || lowercaseInput.includes('how many')) {
-      return botResponses.often;
-    } else if (lowercaseInput.includes('find') || lowercaseInput.includes('bank') || lowercaseInput.includes('location')) {
-      return botResponses.find;
-    } else if (lowercaseInput.includes('after') || lowercaseInput.includes('care') || lowercaseInput.includes('post')) {
-      return botResponses.care;
-    } else if (lowercaseInput.includes('thank')) {
-      return "You're welcome! It's wonderful that you're interested in saving lives through blood donation. Is there anything else I can help you with?";
-    } else {
-      return "I understand you're asking about blood donation. I can help with eligibility, preparation, frequency, finding locations, or post-donation care. What specific information would you like?";
     }
   };
 
+  // Quick reply handler uses handleSend with override
   const handleQuickReply = (reply: string) => {
-    setInputText(reply);
-    handleSendMessage();
+    handleSend(reply);
   };
 
   return (
@@ -169,27 +168,29 @@ const ChatBot: React.FC = () => {
               <>
                 {/* Messages */}
                 <div className="h-80 overflow-y-auto p-4 space-y-4">
-                  {messages.map((message) => (
-                    <motion.div
-                      key={message.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className={`flex ${message.isBot ? 'justify-start' : 'justify-end'}`}
-                    >
-                      <div className={`max-w-xs p-3 rounded-2xl ${
-                        message.isBot 
-                          ? 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200' 
-                          : 'bg-primary-500 text-white'
-                      }`}>
-                        <p className="text-sm">{message.text}</p>
-                        <p className={`text-xs mt-1 ${
-                          message.isBot ? 'text-gray-500 dark:text-gray-400' : 'text-primary-100'
+                    {messages.map((message) => (
+                      <motion.div
+                        key={message.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className={`flex ${message.isBot ? 'justify-start' : 'justify-end'}`}
+                      >
+                        <div className={`max-w-xs p-3 rounded-2xl ${
+                          message.isBot 
+                            ? 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200' 
+                            : 'bg-primary-500 text-white'
                         }`}>
-                          {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </p>
-                      </div>
-                    </motion.div>
-                  ))}
+                          <p className="text-sm">{message.text}</p>
+                          <p className={`text-xs mt-1 ${
+                            message.isBot ? 'text-gray-500 dark:text-gray-400' : 'text-primary-100'
+                          }`}>
+                            {message.timestamp instanceof Date
+                              ? message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                              : new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                        </div>
+                      </motion.div>
+                    ))}
                   
                   {isTyping && (
                     <motion.div
@@ -239,12 +240,12 @@ const ChatBot: React.FC = () => {
                       type="text"
                       value={inputText}
                       onChange={(e) => setInputText(e.target.value)}
-                      onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                      onKeyDown={(e) => e.key === 'Enter' && handleSend()}
                       placeholder="Type your message..."
                       className="flex-1 p-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-gray-700 dark:text-white text-sm"
                     />
                     <button
-                      onClick={handleSendMessage}
+                      onClick={() => handleSend()}
                       disabled={!inputText.trim()}
                       className="p-2 bg-primary-500 text-white rounded-xl hover:bg-primary-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >

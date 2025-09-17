@@ -1,0 +1,28 @@
+{
+  "app": {
+    "title": "LifeFlow",
+    "sos": "EMERGENCY SOS",
+    "online": "Online • Ready to help",
+    "dashboard": "Dashboard",
+    "login": "Login",
+    "getStarted": "Get Started"
+  },
+  "nav": {
+    "home": "Home",
+    "impact": "Impact",
+    "community": "Community",
+    "search": "Search",
+    "logout": "Logout",
+    "security": "End-to-end encrypted • HIPAA compliant • Verified hospitals only"
+  },
+  "home": {
+    "heroTag": "20 urgent requests nearby",
+    "heroTitle": "Save Lives with a Drop",
+    "heroDesc": "Connect with those in need. Every donation matters. Join our community of lifesavers.",
+    "registerDonor": "Register as Donor",
+    "hospitalLogin": "Hospital Login",
+    "whyDonate": "Why Donate Blood?",
+    "upcoming": "Upcoming Blood Camps",
+    "expected": "Expected: {{count}} donors"
+  }
+}

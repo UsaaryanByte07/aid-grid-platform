@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import i18n from '../i18n';
 
 interface ThemeContextType {
   isDark: boolean;
@@ -44,6 +45,11 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const handleSetLanguage = (lang: string) => {
     setLanguage(lang);
     localStorage.setItem('language', lang);
+    try {
+      i18n.changeLanguage(lang);
+    } catch {
+      // ignore
+    }
   };
 
   const value = {

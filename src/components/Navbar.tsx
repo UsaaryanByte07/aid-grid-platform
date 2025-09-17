@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
@@ -21,20 +22,19 @@ const Navbar: React.FC = () => {
   const [showLanguages, setShowLanguages] = useState(false);
   const { user, logout } = useAuth();
   const { isDark, toggleTheme, language, setLanguage } = useTheme();
+  const { t, i18n } = useTranslation();
   const location = useLocation();
 
   const languages = [
     { code: 'en', name: 'English' },
-    { code: 'es', name: 'Español' },
-    { code: 'fr', name: 'Français' },
     { code: 'hi', name: 'हिन्दी' },
   ];
 
   const navLinks = [
-    { name: 'Home', path: '/' },
-    { name: 'Impact', path: '/impact' },
-    { name: 'Community', path: '/community' },
-    { name: 'Search', path: '/search' },
+    { name: t('nav.home'), path: '/' },
+    { name: t('nav.impact'), path: '/impact' },
+    { name: t('nav.community'), path: '/community' },
+    { name: t('nav.search'), path: '/search' },
   ];
 
   return (
@@ -48,7 +48,7 @@ const Navbar: React.FC = () => {
               <div className="absolute inset-0 bg-primary-500 rounded-full opacity-20 group-hover:animate-ping"></div>
             </div>
             <span className="text-2xl font-bold font-display gradient-text">
-              LifeFlow
+              {t('app.title')}
             </span>
           </Link>
 
@@ -112,6 +112,7 @@ const Navbar: React.FC = () => {
                       key={lang.code}
                       onClick={() => {
                         setLanguage(lang.code);
+                        i18n.changeLanguage(lang.code);
                         setShowLanguages(false);
                       }}
                       className={`block w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 ${
@@ -157,17 +158,17 @@ const Navbar: React.FC = () => {
                   onClick={logout}
                   className="text-sm text-gray-600 dark:text-gray-400 hover:text-primary-500 transition-colors duration-300"
                 >
-                  Logout
+                  {t('nav.logout')}
                 </button>
               </div>
             ) : (
               /* Unauthenticated User Actions */
               <div className="flex items-center space-x-3">
                 <Link to="/login" className="btn-ghost text-sm">
-                  Login
+                  {t('app.login')}
                 </Link>
                 <Link to="/login" className="btn-primary text-sm">
-                  Get Started
+                  {t('app.getStarted')}
                 </Link>
               </div>
             )}
@@ -213,14 +214,14 @@ const Navbar: React.FC = () => {
                     onClick={() => setIsOpen(false)}
                     className="block w-full btn-secondary text-center"
                   >
-                    Login
+                    {t('app.login')}
                   </Link>
                   <Link
                     to="/login"
                     onClick={() => setIsOpen(false)}
                     className="block w-full btn-primary text-center"
                   >
-                    Get Started
+                    {t('app.getStarted')}
                   </Link>
                 </div>
               )}
@@ -235,7 +236,7 @@ const Navbar: React.FC = () => {
           <div className="flex items-center justify-center space-x-2 text-sm">
             <Shield className="h-4 w-4 text-green-600" />
             <span className="text-green-700 dark:text-green-300 font-medium">
-              End-to-end encrypted • HIPAA compliant • Verified hospitals only
+              {t('nav.security')}
             </span>
           </div>
         </div>

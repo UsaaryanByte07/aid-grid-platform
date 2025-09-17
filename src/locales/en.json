@@ -1,0 +1,15 @@
+{
+  "app": {
+    "sos": "SOS Emergency"
+  },
+  "home": {
+    "heroTag": "Real-time blood availability",
+    "heroTitle": "Donate Blood, Save Lives",
+    "heroDesc": "Join our community of donors and hospitals working together to save lives.",
+    "registerDonor": "Register as Donor",
+    "hospitalLogin": "Hospital Login",
+    "whyDonate": "Why Donate Blood",
+    "upcoming": "Upcoming Blood Camps",
+    "expected": "Expected Donors: {{count}}"
+  }
+}
