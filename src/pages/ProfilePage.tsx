@@ -29,7 +29,7 @@ import { useTheme } from '../context/ThemeContext';
 import toast from 'react-hot-toast';
 
 const ProfilePage: React.FC = () => {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const { isDark, toggleTheme, language, setLanguage } = useTheme();
   const [activeTab, setActiveTab] = useState('profile');
   const [isEditing, setIsEditing] = useState(false);
@@ -57,10 +57,9 @@ const ProfilePage: React.FC = () => {
     twoFactorAuth: false
   });
 
+  // Only expose EN/HI (i18n configured for these)
   const languages = [
-    { code: 'en', name: 'English', flag: '🇺🇸' },
-    { code: 'es', name: 'Español', flag: '🇪🇸' },
-    { code: 'fr', name: 'Français', flag: '🇫🇷' },
+    { code: 'en', name: 'English', flag: '��' },
     { code: 'hi', name: 'हिन्दी', flag: '🇮🇳' },
   ];
 
@@ -86,10 +85,54 @@ const ProfilePage: React.FC = () => {
     { name: 'Community Champion', description: '20 donations milestone', date: null, earned: false }
   ];
 
-  const handleSave = () => {
-    // Simulate API call
-    toast.success('Profile updated successfully!');
-    setIsEditing(false);
+  const handleSave = async () => {
+    try {
+      if (!user) {
+        // No backend user; persist locally only
+        updateUser({
+          name: formData.name,
+          email: formData.email,
+          location: formData.location,
+          bloodGroup: formData.bloodGroup,
+          lastDonation: formData.lastDonation,
+        } as any);
+        toast.success('Profile updated locally');
+        setIsEditing(false);
+        return;
+      }
+
+      // Try backend PATCH; if backend not running, fall back silently
+      const res = await fetch(`http://localhost:5500/api/users/${user.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          location: formData.location,
+          bloodGroup: formData.bloodGroup,
+          lastDonation: formData.lastDonation,
+        }),
+      }).catch(() => null as any);
+
+      if (res && res.ok) {
+        const updated = await res.json();
+        updateUser(updated);
+        toast.success('Profile updated');
+      } else {
+        // fallback to local update
+        updateUser({
+          name: formData.name,
+          email: formData.email,
+          location: formData.location,
+          bloodGroup: formData.bloodGroup,
+          lastDonation: formData.lastDonation,
+        } as any);
+        toast.success('Profile updated locally');
+      }
+      setIsEditing(false);
+    } catch (e) {
+      toast.error('Failed to update profile');
+    }
   };
 
   const handleSettingChange = (setting: string, value: boolean) => {
@@ -473,7 +516,7 @@ const ProfilePage: React.FC = () => {
                       </div>
                       <select
                         value={language}
-                        onChange={(e) => setLanguage(e.target.value)}
+                        onChange={(e) => { setLanguage(e.target.value); toast.success('Language updated'); }}
                         className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                       >
                         {languages.map((lang) => (

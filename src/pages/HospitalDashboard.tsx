@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   Plus,
@@ -23,6 +23,7 @@ const HospitalDashboard: React.FC = () => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('requests');
   const [showRequestModal, setShowRequestModal] = useState(false);
+  const [showCampModal, setShowCampModal] = useState(false);
   const [requestForm, setRequestForm] = useState({
     bloodGroup: '',
     urgency: '',
@@ -30,6 +31,56 @@ const HospitalDashboard: React.FC = () => {
     unitsNeeded: '',
     description: ''
   });
+  const [dashboard, setDashboard] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [bootcamps, setBootcamps] = useState<any[]>([]);
+  const [campForm, setCampForm] = useState({
+    title: '',
+    date: '',
+    time: '',
+    venue: '',
+    expectedDonors: ''
+  });
+  const [editingCamp, setEditingCamp] = useState<any | null>(null);
+  // Edit Request state
+  const [showEditRequestModal, setShowEditRequestModal] = useState(false);
+  const [editingRequest, setEditingRequest] = useState<any | null>(null);
+  const [editRequestForm, setEditRequestForm] = useState({
+    bloodGroup: '',
+    urgency: '',
+    patientInfo: '',
+    unitsNeeded: '',
+    description: '',
+    status: ''
+  });
+  // Responses state
+  const [showResponsesModal, setShowResponsesModal] = useState(false);
+  const [responsesLoading, setResponsesLoading] = useState(false);
+  const [responses, setResponses] = useState<any[]>([]);
+  const [responsesRequestTitle, setResponsesRequestTitle] = useState<string>('');
+
+  useEffect(() => {
+    if (user) {
+      fetch(`http://localhost:5500/api/hospital/${user.id}/dashboard`)
+        .then(res => res.json())
+        .then(data => {
+          setDashboard(data);
+          setLoading(false);
+        })
+        .catch(() => {
+          setError('Failed to load dashboard');
+          setLoading(false);
+        });
+      // Load bootcamps for this hospital
+      fetch(`http://localhost:5500/api/hospital/${user.id}/bootcamps`)
+        .then(res => res.json())
+        .then(data => setBootcamps(data))
+        .catch(() => {/* ignore for now */});
+    }
+  }, [user]);
+
+  // Remove duplicate handleRequestSubmit, keep only the async version below
 
   // Mock data
   const stats = [
@@ -90,31 +141,155 @@ const HospitalDashboard: React.FC = () => {
     { hour: '20:00', avgResponse: 35 }
   ];
 
-  const upcomingBootcamps = [
-    {
-      id: 1,
-      title: 'Monthly Blood Drive',
-      date: '2024-02-15',
-      time: '9:00 AM - 5:00 PM',
-      venue: 'Hospital Main Lobby',
-      expectedDonors: 150,
-      status: 'Confirmed'
-    },
-    {
-      id: 2,
-      title: 'Community Outreach Camp',
-      date: '2024-02-22',
-      time: '10:00 AM - 4:00 PM',
-      venue: 'City Community Center',
-      expectedDonors: 200,
-      status: 'Planning'
-    }
-  ];
+  const upcomingBootcamps = bootcamps;
 
-  const handleRequestSubmit = (e: React.FormEvent) => {
+  const handleCampSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Simulate API call
+    if (!user) return;
+    try {
+      const response = await fetch('http://localhost:5500/api/bootcamps', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          hospitalId: user.id,
+          title: campForm.title,
+          date: campForm.date,
+          time: campForm.time,
+          venue: campForm.venue,
+          expectedDonors: campForm.expectedDonors ? Number(campForm.expectedDonors) : 0,
+        }),
+      });
+      if (!response.ok) throw new Error('Failed');
+      toast.success('Camp created');
+      // refresh list
+      const list = await fetch(`http://localhost:5500/api/hospital/${user.id}/bootcamps`).then(r => r.json());
+      setBootcamps(list);
+      setShowCampModal(false);
+      setCampForm({ title: '', date: '', time: '', venue: '', expectedDonors: '' });
+    } catch (err) {
+      toast.error('Failed to create camp');
+    }
+  };
+
+  const deleteCamp = async (id: number) => {
+    try {
+      const res = await fetch(`http://localhost:5500/api/bootcamps/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Failed');
+      setBootcamps(prev => prev.filter(c => c.id !== id));
+      toast.success('Camp deleted');
+    } catch (err) {
+      toast.error('Failed to delete camp');
+    }
+  };
+
+  const updateCamp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingCamp) return;
+    try {
+      const res = await fetch(`http://localhost:5500/api/bootcamps/${editingCamp.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: campForm.title,
+          date: campForm.date,
+          time: campForm.time,
+          venue: campForm.venue,
+          expectedDonors: campForm.expectedDonors ? Number(campForm.expectedDonors) : 0,
+          status: editingCamp.status,
+        })
+      });
+      if (!res.ok) throw new Error('Failed');
+      const updated = await res.json();
+      setBootcamps(prev => prev.map(c => c.id === updated.id ? updated : c));
+      setEditingCamp(null);
+      setShowCampModal(false);
+      setCampForm({ title: '', date: '', time: '', venue: '', expectedDonors: '' });
+      toast.success('Camp updated');
+    } catch (err) {
+      toast.error('Failed to update camp');
+    }
+  };
+
+  const openEditRequest = (req: any) => {
+    setEditingRequest(req);
+    setEditRequestForm({
+      bloodGroup: req.bloodGroup || '',
+      urgency: req.urgency || '',
+      patientInfo: req.patientInfo || '',
+      unitsNeeded: String(req.unitsNeeded ?? ''),
+      description: req.description || '',
+      status: req.status || 'Active'
+    });
+    setShowEditRequestModal(true);
+  };
+
+  const handleUpdateRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingRequest) return;
+    try {
+      const res = await fetch(`http://localhost:5500/api/requests/${editingRequest.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bloodGroup: editRequestForm.bloodGroup,
+          urgency: editRequestForm.urgency,
+          patientInfo: editRequestForm.patientInfo,
+          unitsNeeded: editRequestForm.unitsNeeded ? Number(editRequestForm.unitsNeeded) : undefined,
+          description: editRequestForm.description,
+          status: editRequestForm.status,
+        })
+      });
+      if (!res.ok) throw new Error('Failed');
+      const updated = await res.json();
+      setDashboard((prev: any) => ({
+        ...prev,
+        requests: prev?.requests?.map((r: any) => r.id === updated.id ? updated : r)
+      }));
+      setShowEditRequestModal(false);
+      setEditingRequest(null);
+      toast.success('Request updated');
+    } catch (err) {
+      toast.error('Failed to update request');
+    }
+  };
+
+  const openResponses = async (req: any) => {
+    try {
+      setResponsesLoading(true);
+      setShowResponsesModal(true);
+      setResponsesRequestTitle(req.patientInfo || `Request #${req.id}`);
+      const res = await fetch(`http://localhost:5500/api/requests/${req.id}/responses`);
+      if (!res.ok) throw new Error('Failed');
+      const data = await res.json();
+      setResponses(data);
+    } catch (err) {
+      toast.error('Failed to load responses');
+      setResponses([]);
+    } finally {
+      setResponsesLoading(false);
+    }
+  };
+
+  const handleRequestSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+    const response = await fetch('http://localhost:5500/api/requests', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ...requestForm,
+        hospitalId: user.id,
+      }),
+    });
+    if (!response.ok) {
+      toast.error('Failed to create request');
+      return;
+    }
     toast.success('Blood request posted successfully!');
+    // Refresh dashboard data
+    fetch(`http://localhost:5500/api/hospital/${user.id}/dashboard`)
+      .then(res => res.json())
+      .then(data => setDashboard(data));
     setShowRequestModal(false);
     setRequestForm({
       bloodGroup: '',
@@ -248,7 +423,7 @@ const HospitalDashboard: React.FC = () => {
               </div>
 
               <div className="grid gap-6">
-                {activeRequests.map((request) => (
+                {dashboard && dashboard.requests && dashboard.requests.map((request: any) => (
                   <motion.div
                     key={request.id}
                     whileHover={{ y: -2 }}
@@ -288,7 +463,7 @@ const HospitalDashboard: React.FC = () => {
                             {request.responses} responses
                           </div>
                           {request.responses > 0 && (
-                            <button className="text-blue-500 hover:text-blue-700 text-sm font-medium">
+                            <button className="text-blue-500 hover:text-blue-700 text-sm font-medium" onClick={() => openResponses(request)}>
                               View responses →
                             </button>
                           )}
@@ -296,7 +471,7 @@ const HospitalDashboard: React.FC = () => {
                       </div>
                       
                       <div className="flex items-center space-x-3">
-                        <button className="btn-ghost p-2">
+                        <button className="btn-ghost p-2" onClick={() => openEditRequest(request)}>
                           <Edit className="h-4 w-4" />
                         </button>
                         <button className="btn-secondary">
@@ -404,7 +579,7 @@ const HospitalDashboard: React.FC = () => {
                 <h2 className="text-2xl font-bold font-display text-gray-900 dark:text-white">
                   Blood Camp Management
                 </h2>
-                <button className="btn-primary">
+                <button className="btn-primary" onClick={() => setShowCampModal(true)}>
                   Create New Camp
                 </button>
               </div>
@@ -430,7 +605,7 @@ const HospitalDashboard: React.FC = () => {
                         <div className="flex items-center space-x-6 text-sm text-gray-600 dark:text-gray-400">
                           <span className="flex items-center space-x-1">
                             <Calendar className="h-4 w-4" />
-                            <span>{new Date(camp.date).toLocaleDateString()}</span>
+                            <span>{camp.date ? new Date(camp.date).toLocaleDateString() : ''}</span>
                           </span>
                           <span className="flex items-center space-x-1">
                             <Clock className="h-4 w-4" />
@@ -448,13 +623,13 @@ const HospitalDashboard: React.FC = () => {
                       </div>
                       
                       <div className="flex items-center space-x-3">
-                        <button className="btn-ghost">
+                        <button className="btn-ghost" onClick={() => { setEditingCamp(camp); setCampForm({ title: camp.title, date: camp.date, time: camp.time, venue: camp.venue, expectedDonors: String(camp.expectedDonors ?? '') }); setShowCampModal(true); }}>
                           Edit
                         </button>
                         <button className="btn-secondary">
                           View Details
                         </button>
-                        <button className="btn-primary">
+                        <button className="btn-primary" onClick={() => deleteCamp(camp.id)}>
                           Manage
                         </button>
                       </div>
@@ -642,6 +817,313 @@ const HospitalDashboard: React.FC = () => {
                   </button>
                 </div>
               </form>
+            </motion.div>
+          </div>
+        )}
+
+        {/* New Camp Modal */}
+        {showCampModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-white dark:bg-gray-800 rounded-2xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold font-display text-gray-900 dark:text-white">
+                  Create Blood Camp
+                </h2>
+                <button
+                  onClick={() => setShowCampModal(false)}
+                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-colors"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+
+              <form onSubmit={editingCamp ? updateCamp : handleCampSubmit} className="space-y-6">
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Camp Title
+                    </label>
+                    <input
+                      type="text"
+                      value={campForm.title}
+                      onChange={(e) => setCampForm(prev => ({ ...prev, title: e.target.value }))}
+                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                      placeholder="e.g., Community Blood Drive"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Date
+                    </label>
+                    <input
+                      type="date"
+                      value={campForm.date}
+                      onChange={(e) => setCampForm(prev => ({ ...prev, date: e.target.value }))}
+                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Time
+                    </label>
+                    <input
+                      type="text"
+                      value={campForm.time}
+                      onChange={(e) => setCampForm(prev => ({ ...prev, time: e.target.value }))}
+                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                      placeholder="e.g., 09:00 AM - 05:00 PM"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Expected Donors
+                    </label>
+                    <input
+                      type="number"
+                      value={campForm.expectedDonors}
+                      onChange={(e) => setCampForm(prev => ({ ...prev, expectedDonors: e.target.value }))}
+                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                      placeholder="e.g., 150"
+                      min={0}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Venue
+                  </label>
+                  <input
+                    type="text"
+                    value={campForm.venue}
+                    onChange={(e) => setCampForm(prev => ({ ...prev, venue: e.target.value }))}
+                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                    placeholder="e.g., City Community Center"
+                    required
+                  />
+                </div>
+
+                <div className="flex items-center justify-end space-x-4 pt-6">
+                  <button
+                    type="button"
+                    onClick={() => setShowCampModal(false)}
+                    className="btn-ghost"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="btn-primary"
+                  >
+                    Create Camp
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+
+        {/* Edit Request Modal */}
+        {showEditRequestModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-white dark:bg-gray-800 rounded-2xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold font-display text-gray-900 dark:text-white">
+                  Edit Blood Request
+                </h2>
+                <button
+                  onClick={() => setShowEditRequestModal(false)}
+                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-colors"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+
+              <form onSubmit={handleUpdateRequest} className="space-y-6">
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Blood Group Required
+                    </label>
+                    <select
+                      value={editRequestForm.bloodGroup}
+                      onChange={(e) => setEditRequestForm(prev => ({ ...prev, bloodGroup: e.target.value }))}
+                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                      required
+                    >
+                      <option value="">Select blood group</option>
+                      <option value="A+">A+</option>
+                      <option value="A-">A-</option>
+                      <option value="B+">B+</option>
+                      <option value="B-">B-</option>
+                      <option value="AB+">AB+</option>
+                      <option value="AB-">AB-</option>
+                      <option value="O+">O+</option>
+                      <option value="O-">O-</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Urgency Level
+                    </label>
+                    <select
+                      value={editRequestForm.urgency}
+                      onChange={(e) => setEditRequestForm(prev => ({ ...prev, urgency: e.target.value }))}
+                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                      required
+                    >
+                      <option value="">Select urgency</option>
+                      <option value="Critical">Critical</option>
+                      <option value="Urgent">Urgent</option>
+                      <option value="Routine">Routine</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Patient Information
+                    </label>
+                    <input
+                      type="text"
+                      value={editRequestForm.patientInfo}
+                      onChange={(e) => setEditRequestForm(prev => ({ ...prev, patientInfo: e.target.value }))}
+                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                      placeholder="e.g., Emergency Surgery - Room 204"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Units Needed
+                    </label>
+                    <input
+                      type="number"
+                      value={editRequestForm.unitsNeeded}
+                      onChange={(e) => setEditRequestForm(prev => ({ ...prev, unitsNeeded: e.target.value }))}
+                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                      placeholder="Number of units"
+                      min="1"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Additional Description
+                  </label>
+                  <textarea
+                    value={editRequestForm.description}
+                    onChange={(e) => setEditRequestForm(prev => ({ ...prev, description: e.target.value }))}
+                    rows={4}
+                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                    placeholder="Additional details about the patient's condition or special requirements..."
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Status
+                  </label>
+                  <select
+                    value={editRequestForm.status}
+                    onChange={(e) => setEditRequestForm(prev => ({ ...prev, status: e.target.value }))}
+                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                  >
+                    <option value="Active">Active</option>
+                    <option value="Partially Fulfilled">Partially Fulfilled</option>
+                    <option value="Fulfilled">Fulfilled</option>
+                  </select>
+                </div>
+
+                <div className="flex items-center justify-end space-x-4 pt-6">
+                  <button
+                    type="button"
+                    onClick={() => setShowEditRequestModal(false)}
+                    className="btn-ghost"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="btn-primary"
+                  >
+                    Save Changes
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+
+        {/* Responses Modal */}
+        {showResponsesModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-white dark:bg-gray-800 rounded-2xl p-8 max-w-3xl w-full max-h-[90vh] overflow-y-auto"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold font-display text-gray-900 dark:text-white">
+                  Donor Responses
+                </h2>
+                <button
+                  onClick={() => setShowResponsesModal(false)}
+                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-colors"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+
+              <div className="mb-4 text-sm text-gray-600 dark:text-gray-400">
+                For: <span className="font-medium text-gray-900 dark:text-white">{responsesRequestTitle}</span>
+              </div>
+
+              {responsesLoading ? (
+                <div className="text-center text-gray-600 dark:text-gray-400">Loading responses...</div>
+              ) : responses.length === 0 ? (
+                <div className="text-center text-gray-600 dark:text-gray-400">No responses yet.</div>
+              ) : (
+                <div className="space-y-3">
+                  {responses.map((r) => (
+                    <div key={r.id} className="p-4 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="font-semibold text-gray-900 dark:text-white">{r.donorName}</div>
+                        <div className="text-xs text-gray-500">{r.createdAt ? new Date(r.createdAt).toLocaleString() : ''}</div>
+                      </div>
+                      <div className="text-sm text-gray-600 dark:text-gray-300 mb-1">
+                        {r.donorBloodGroup} • {r.donorLocation || 'Location N/A'}
+                      </div>
+                      <div className="text-sm text-gray-700 dark:text-gray-200">{r.message}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="flex items-center justify-end mt-6">
+                <button className="btn-primary" onClick={() => setShowResponsesModal(false)}>Close</button>
+              </div>
             </motion.div>
           </div>
         )}

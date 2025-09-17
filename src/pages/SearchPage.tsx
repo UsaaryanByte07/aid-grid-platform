@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   Search,
@@ -16,7 +16,11 @@ import {
   ExternalLink
 } from 'lucide-react';
 
+import { useAuth } from '../context/AuthContext';
+import toast from 'react-hot-toast';
+
 const SearchPage: React.FC = () => {
+  const { user } = useAuth();
   const [searchType, setSearchType] = useState<'donors' | 'hospitals'>('donors');
   const [filters, setFilters] = useState({
     bloodGroup: '',
@@ -26,140 +30,71 @@ const SearchPage: React.FC = () => {
   });
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Mock data
-  const donors = [
-    {
-      id: 1,
-      name: 'John Smith',
-      bloodGroup: 'O+',
-      location: 'New York, NY',
-      distance: '2.3 km',
-      lastDonation: '2023-12-15',
-      totalDonations: 12,
-      rating: 4.9,
-      availability: 'Available',
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=john',
-      verified: true,
-      badges: ['Regular Donor', 'Life Saver']
-    },
-    {
-      id: 2,
-      name: 'Sarah Johnson',
-      bloodGroup: 'A+',
-      location: 'Brooklyn, NY',
-      distance: '4.1 km',
-      lastDonation: '2024-01-20',
-      totalDonations: 8,
-      rating: 4.8,
-      availability: 'Available',
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=sarah',
-      verified: true,
-      badges: ['First Time Donor', 'Community Hero']
-    },
-    {
-      id: 3,
-      name: 'Michael Chen',
-      bloodGroup: 'B+',
-      location: 'Manhattan, NY',
-      distance: '5.8 km',
-      lastDonation: '2024-02-01',
-      totalDonations: 15,
-      rating: 5.0,
-      availability: 'Busy',
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=michael',
-      verified: true,
-      badges: ['Veteran Donor', 'Gold Star']
-    },
-    {
-      id: 4,
-      name: 'Emily Davis',
-      bloodGroup: 'AB+',
-      location: 'Queens, NY',
-      distance: '7.2 km',
-      lastDonation: '2024-01-10',
-      totalDonations: 6,
-      rating: 4.7,
-      availability: 'Available',
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=emily',
-      verified: true,
-      badges: ['Rising Star']
-    }
-  ];
+  // Data from backend
+  const [donors, setDonors] = useState<any[]>([]);
+  const [hospitals, setHospitals] = useState<any[]>([]);
 
-  const hospitals = [
-    {
-      id: 1,
-      name: 'City General Hospital',
-      address: '123 Medical Center Dr, New York, NY',
-      distance: '1.5 km',
-      phone: '+1 (555) 123-4567',
-      email: 'blood.bank@citygeneral.com',
+  const fetchDonors = async () => {
+    const params = new URLSearchParams();
+    if (filters.bloodGroup) params.append('bloodGroup', filters.bloodGroup);
+    if (filters.location) params.append('location', filters.location);
+    if (searchQuery) params.append('q', searchQuery);
+    const res = await fetch(`http://localhost:5500/api/donors?${params.toString()}`);
+    const data = await res.json();
+    setDonors(data.map((d: any, idx: number) => ({
+      ...d,
+      verified: true,
+      availability: 'Available',
+      distance: `${(Math.random() * 8 + 1).toFixed(1)} km away`,
+      rating: 4.5,
+      totalDonations: Math.floor(Math.random() * 10) + 1,
+      lastDonation: d.lastDonation || new Date(Date.now() - 86400000 * (Math.floor(Math.random() * 60) + 5)).toISOString(),
+      badges: ['Reliable', 'Fast responder'],
+      avatar: d.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(d.name || `donor-${idx}`)}`,
+    })));
+  };
+
+  const fetchHospitals = async () => {
+    const params = new URLSearchParams();
+    if (filters.location) params.append('location', filters.location);
+    if (searchQuery) params.append('q', searchQuery);
+    const res = await fetch(`http://localhost:5500/api/hospitals?${params.toString()}`);
+    const data = await res.json();
+    // augment with simple placeholders for needs and slots
+    setHospitals(data.map((h: any) => ({
+      ...h,
+      address: h.location || 'Address unavailable',
+      verified: true,
       rating: 4.8,
-      verified: true,
-      specialties: ['Emergency Care', 'Surgery', 'Oncology'],
+      specialties: ['Emergency Care', 'Surgery'],
       availableSlots: [
-        { date: '2024-02-15', time: '9:00 AM - 12:00 PM', slots: 8 },
-        { date: '2024-02-16', time: '2:00 PM - 5:00 PM', slots: 12 },
-        { date: '2024-02-17', time: '10:00 AM - 1:00 PM', slots: 5 }
+        { date: new Date().toISOString().slice(0,10), time: '09:00 - 12:00', slots: 5 },
+        { date: new Date(Date.now()+86400000).toISOString().slice(0,10), time: '14:00 - 17:00', slots: 8 },
       ],
-      currentNeeds: ['O+', 'A-', 'B+'],
+      currentNeeds: ['O+', 'A-'],
       image: 'https://images.unsplash.com/photo-1587351021759-3e566b6af7cc?w=400&h=250&fit=crop'
-    },
-    {
-      id: 2,
-      name: 'St. Mary Medical Center',
-      address: '456 Healthcare Ave, Brooklyn, NY',
-      distance: '3.2 km',
-      phone: '+1 (555) 234-5678',
-      email: 'donations@stmary.org',
-      rating: 4.9,
-      verified: true,
-      specialties: ['Cardiology', 'Pediatrics', 'Maternity'],
-      availableSlots: [
-        { date: '2024-02-15', time: '8:00 AM - 11:00 AM', slots: 15 },
-        { date: '2024-02-18', time: '1:00 PM - 4:00 PM', slots: 10 },
-        { date: '2024-02-19', time: '9:00 AM - 12:00 PM', slots: 18 }
-      ],
-      currentNeeds: ['AB+', 'O-', 'A+'],
-      image: 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?w=400&h=250&fit=crop'
-    },
-    {
-      id: 3,
-      name: 'Metro Health Institute',
-      address: '789 Wellness Blvd, Manhattan, NY',
-      distance: '4.7 km',
-      phone: '+1 (555) 345-6789',
-      email: 'bloodservice@metrohealth.com',
-      rating: 4.6,
-      verified: true,
-      specialties: ['Trauma Care', 'Blood Disorders', 'Research'],
-      availableSlots: [
-        { date: '2024-02-16', time: '10:00 AM - 1:00 PM', slots: 6 },
-        { date: '2024-02-17', time: '3:00 PM - 6:00 PM', slots: 9 },
-        { date: '2024-02-20', time: '8:00 AM - 11:00 AM', slots: 12 }
-      ],
-      currentNeeds: ['B-', 'AB-', 'O+'],
-      image: 'https://images.unsplash.com/photo-1551601651-2a8555f1a136?w=400&h=250&fit=crop'
-    }
-  ];
+    })));
+  };
+
+  useEffect(() => {
+    if (searchType === 'donors') fetchDonors();
+    else fetchHospitals();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchType]);
+
+  useEffect(() => {
+    const id = setTimeout(() => {
+      if (searchType === 'donors') fetchDonors(); else fetchHospitals();
+    }, 300);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters, searchQuery]);
 
   const bloodGroups = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
-  const filteredDonors = donors.filter(donor => {
-    const matchesBloodGroup = !filters.bloodGroup || donor.bloodGroup === filters.bloodGroup;
-    const matchesLocation = !filters.location || donor.location.toLowerCase().includes(filters.location.toLowerCase());
-    const matchesAvailability = !filters.availability || donor.availability === filters.availability;
-    const matchesSearch = !searchQuery || donor.name.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    return matchesBloodGroup && matchesLocation && matchesAvailability && matchesSearch;
-  });
+  const filteredDonors = useMemo(() => donors, [donors]);
 
-  const filteredHospitals = hospitals.filter(hospital => {
-    const matchesLocation = !filters.location || hospital.address.toLowerCase().includes(filters.location.toLowerCase());
-    const matchesSearch = !searchQuery || hospital.name.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    return matchesLocation && matchesSearch;
-  });
+  const filteredHospitals = useMemo(() => hospitals, [hospitals]);
 
   const getAvailabilityColor = (availability: string) => {
     switch (availability) {
@@ -292,7 +227,9 @@ const SearchPage: React.FC = () => {
             )}
 
             {/* Map Button */}
-            <button className="btn-primary flex items-center justify-center space-x-2">
+            <button className="btn-primary flex items-center justify-center space-x-2" onClick={() => {
+              if (searchType === 'donors') fetchDonors(); else fetchHospitals();
+            }}>
               <MapPin className="h-5 w-5" />
               <span>View Map</span>
             </button>
@@ -386,12 +323,8 @@ const SearchPage: React.FC = () => {
                         </div>
 
                         <div className="flex items-center space-x-3">
-                          <button className="flex-1 btn-primary text-sm">
-                            Contact Donor
-                          </button>
-                          <button className="btn-secondary text-sm">
-                            View Profile
-                          </button>
+                          <button className="flex-1 btn-primary text-sm" onClick={() => toast('Contact donor coming soon')}>Contact Donor</button>
+                          <button className="btn-secondary text-sm" onClick={() => toast('Profile coming soon')}>View Profile</button>
                         </div>
                       </div>
                     </div>
@@ -524,7 +457,20 @@ const SearchPage: React.FC = () => {
                                   <Users className="h-4 w-4" />
                                   <span className="text-sm">{slot.slots} slots</span>
                                 </div>
-                                <button className="btn-primary text-xs px-3 py-1">
+                                <button className="btn-primary text-xs px-3 py-1" onClick={async () => {
+                                  if (!user || user.type !== 'donor') { toast.error('Login as donor to book'); return; }
+                                  try {
+                                    const res = await fetch('http://localhost:5500/api/appointments', {
+                                      method: 'POST',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({ hospitalId: hospital.id, donorId: user.id, date: slot.date, time: slot.time })
+                                    });
+                                    if (!res.ok) throw new Error('Failed');
+                                    toast.success('Appointment booked');
+                                  } catch (e) {
+                                    toast.error('Could not book');
+                                  }
+                                }}>
                                   Book
                                 </button>
                               </div>
@@ -533,9 +479,7 @@ const SearchPage: React.FC = () => {
                         </div>
 
                         <div className="mt-4 space-y-2">
-                          <button className="w-full btn-primary">
-                            Book Appointment
-                          </button>
+                          <button className="w-full btn-primary" onClick={() => toast('Pick a slot to book')}>Book Appointment</button>
                           <button className="w-full btn-secondary flex items-center justify-center space-x-2">
                             <ExternalLink className="h-4 w-4" />
                             <span>View Details</span>

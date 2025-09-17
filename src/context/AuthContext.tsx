@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
 interface User {
   id: string;
@@ -18,6 +18,7 @@ interface AuthContextType {
   logout: () => void;
   register: (userData: any) => Promise<void>;
   isAuthenticated: boolean;
+  updateUser: (updates: Partial<User>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -25,42 +26,74 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
 
+  // Load persisted user on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('aidgrid_user');
+      if (saved) {
+        const parsed: User = JSON.parse(saved);
+        setUser(parsed);
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
   const login = async (email: string, password: string, type: 'donor' | 'hospital') => {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Mock user data
-    const mockUser: User = {
-      id: '1',
-      name: type === 'donor' ? 'John Doe' : 'City Hospital',
-      email,
-      type,
-      bloodGroup: type === 'donor' ? 'O+' : undefined,
-      verified: true,
-      avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`,
-      location: 'New York, NY',
-      lastDonation: type === 'donor' ? '2024-01-15' : undefined,
-    };
-    
-    setUser(mockUser);
+    const response = await fetch('http://localhost:5500/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, type }),
+    });
+    if (!response.ok) {
+      throw new Error('Invalid credentials');
+    }
+    const data = await response.json();
+    setUser(data.user);
+    try {
+      localStorage.setItem('aidgrid_user', JSON.stringify(data.user));
+    } catch {
+      // ignore
+    }
+    // Optionally: store token in localStorage for auth
+    // localStorage.setItem('token', data.token);
   };
 
   const register = async (userData: any) => {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    const newUser: User = {
-      id: Date.now().toString(),
-      ...userData,
-      verified: false,
-      avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${userData.email}`,
-    };
-    
-    setUser(newUser);
+    const response = await fetch('http://localhost:5500/api/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(userData),
+    });
+    if (!response.ok) {
+      throw new Error('Registration failed');
+    }
+    // Optionally, you can log the user in right after registration:
+    const data = await response.json();
+    // Fetch the user from backend if you want to setUser here, or redirect to login page
+    // setUser({ ...userData, id: data.userId, verified: false });
   };
 
   const logout = () => {
     setUser(null);
+    try {
+      localStorage.removeItem('aidgrid_user');
+    } catch {
+      // ignore
+    }
+  };
+
+  const updateUser = (updates: Partial<User>) => {
+    setUser(prev => {
+      if (!prev) return prev;
+      const next = { ...prev, ...updates } as User;
+      try {
+        localStorage.setItem('aidgrid_user', JSON.stringify(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
   };
 
   const value = {
@@ -69,6 +102,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     logout,
     register,
     isAuthenticated: !!user,
+    updateUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

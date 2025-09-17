@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   Heart,
@@ -17,18 +17,43 @@ import {
 } from 'lucide-react';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useAuth } from '../context/AuthContext';
+import toast from 'react-hot-toast';
 
 const DonorDashboard: React.FC = () => {
   const { user } = useAuth();
+  const [dashboard, setDashboard] = useState<any>(null);
   const [activeTab, setActiveTab] = useState('overview');
+  const [requests, setRequests] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Mock data
-  const donationStats = [
-    { name: 'Total Donations', value: 8 },
-    { name: 'Lives Saved', value: 24 },
-    { name: 'Points Earned', value: 480 }
+  useEffect(() => {
+    if (user) {
+      fetch(`http://localhost:5500/api/donor/${user.id}/dashboard`)
+        .then(res => res.json())
+        .then(data => {
+          setDashboard(data);
+          setLoading(false);
+        })
+        .catch(() => {
+          setError('Failed to load dashboard');
+          setLoading(false);
+        });
+    }
+    fetch('http://localhost:5500/api/requests')
+      .then(res => res.json())
+      .then(data => setRequests(data));
+  }, [user]);
+
+  // Example badges (static)
+  const badges = [
+    { name: 'First Drop', description: 'Made your first donation', earned: true, icon: '🩸' },
+    { name: 'Life Saver', description: 'Saved 10 lives', earned: true, icon: '💪' },
+    { name: 'Regular Hero', description: '5 donations in 6 months', earned: true, icon: '🏆' },
+    { name: 'Community Champion', description: '20 donations milestone', earned: false, icon: '👑' }
   ];
 
+  // Restore mock data for charts and leaderboard (until backend provides these)
   const monthlyDonations = [
     { month: 'Jan', donations: 2 },
     { month: 'Feb', donations: 1 },
@@ -37,7 +62,6 @@ const DonorDashboard: React.FC = () => {
     { month: 'May', donations: 0 },
     { month: 'Jun', donations: 1 }
   ];
-
   const bloodGroupData = [
     { name: 'O+', value: 35, color: '#E63946' },
     { name: 'A+', value: 25, color: '#F77F00' },
@@ -45,50 +69,12 @@ const DonorDashboard: React.FC = () => {
     { name: 'AB+', value: 10, color: '#003566' },
     { name: 'Others', value: 10, color: '#0077B6' }
   ];
-
-  const liveRequests = [
-    {
-      id: 1,
-      hospital: 'City General Hospital',
-      bloodGroup: 'O+',
-      urgency: 'Critical',
-      distance: '2.3 km',
-      timePosted: '15 mins ago',
-      description: 'Emergency surgery patient needs immediate blood transfusion'
-    },
-    {
-      id: 2,
-      hospital: 'St. Mary Medical Center',
-      bloodGroup: 'A+',
-      urgency: 'Urgent',
-      distance: '4.1 km',
-      timePosted: '1 hour ago',
-      description: 'Cancer patient undergoing chemotherapy'
-    },
-    {
-      id: 3,
-      hospital: 'Metro Health Institute',
-      bloodGroup: 'B+',
-      urgency: 'Routine',
-      distance: '5.8 km',
-      timePosted: '3 hours ago',
-      description: 'Scheduled surgery preparation'
-    }
-  ];
-
   const leaderboard = [
     { rank: 1, name: 'Sarah Johnson', donations: 23, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=sarah' },
     { rank: 2, name: 'Michael Chen', donations: 21, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=michael' },
     { rank: 3, name: 'Emily Davis', donations: 18, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=emily' },
     { rank: 4, name: user?.name || 'You', donations: 8, avatar: user?.avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=you' },
     { rank: 5, name: 'David Wilson', donations: 15, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=david' }
-  ];
-
-  const badges = [
-    { name: 'First Drop', description: 'Made your first donation', earned: true, icon: '🩸' },
-    { name: 'Life Saver', description: 'Saved 10 lives', earned: true, icon: '💪' },
-    { name: 'Regular Hero', description: '5 donations in 6 months', earned: true, icon: '🏆' },
-    { name: 'Community Champion', description: '20 donations milestone', earned: false, icon: '👑' }
   ];
 
   const getUrgencyColor = (urgency: string) => {
@@ -162,13 +148,13 @@ const DonorDashboard: React.FC = () => {
           transition={{ delay: 0.1 }}
           className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8"
         >
-          {donationStats.map((stat, index) => (
-            <div key={stat.name} className="card p-6 text-center">
+          {dashboard && dashboard.stats && Object.entries(dashboard.stats).map(([name, value]: any, index) => (
+            <div key={name} className="card p-6 text-center">
               <div className="text-3xl font-bold font-display text-primary-500 mb-2">
-                {stat.value}
+                {value}
               </div>
               <div className="text-gray-600 dark:text-gray-400">
-                {stat.name}
+                {name.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
               </div>
             </div>
           ))}
@@ -348,7 +334,7 @@ const DonorDashboard: React.FC = () => {
               </div>
 
               <div className="grid gap-6">
-                {liveRequests.map((request) => (
+                {requests.map((request) => (
                   <motion.div
                     key={request.id}
                     whileHover={{ y: -2 }}
@@ -358,25 +344,19 @@ const DonorDashboard: React.FC = () => {
                       <div className="flex-1">
                         <div className="flex items-center space-x-3 mb-2">
                           <h3 className="text-xl font-bold font-display text-gray-900 dark:text-white">
-                            {request.hospital}
+                            {request.patientInfo || request.hospital}
                           </h3>
                           <span className={`px-3 py-1 rounded-full text-xs font-medium ${getUrgencyColor(request.urgency)}`}>
                             {request.urgency}
                           </span>
                         </div>
-                        
                         <p className="text-gray-600 dark:text-gray-400 mb-3">
                           {request.description}
                         </p>
-                        
                         <div className="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400">
                           <span className="flex items-center space-x-1">
                             <Heart className="h-4 w-4 text-red-500" />
                             <span>Blood Group: {request.bloodGroup}</span>
-                          </span>
-                          <span className="flex items-center space-x-1">
-                            <MapPin className="h-4 w-4" />
-                            <span>{request.distance} away</span>
                           </span>
                           <span className="flex items-center space-x-1">
                             <Clock className="h-4 w-4" />
@@ -384,14 +364,29 @@ const DonorDashboard: React.FC = () => {
                           </span>
                         </div>
                       </div>
-                      
                       <div className="flex items-center space-x-3">
                         {request.bloodGroup === user?.bloodGroup && (
                           <div className="bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-400 px-3 py-1 rounded-full text-sm font-medium">
                             Match!
                           </div>
                         )}
-                        <button className="btn-primary">
+                        <button
+                          className="btn-primary"
+                          onClick={async () => {
+                            try {
+                              if (!user) return;
+                              const res = await fetch(`http://localhost:5500/api/requests/${request.id}/respond`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ donorId: user.id, message: 'I can help' })
+                              });
+                              if (!res.ok) throw new Error('Failed');
+                              toast.success('Response sent');
+                            } catch (e) {
+                              toast.error('Could not send response');
+                            }
+                          }}
+                        >
                           Respond
                         </button>
                         <button className="btn-secondary">

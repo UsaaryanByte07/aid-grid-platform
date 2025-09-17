@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
@@ -20,15 +21,20 @@ import { Swiper, SwiperSlide } from 'swiper/react';
 import { Autoplay, Pagination } from 'swiper/modules';
 import 'swiper/css';
 import 'swiper/css/pagination';
+import { useAuth } from '../context/AuthContext';
+import toast from 'react-hot-toast';
 
 const HomePage: React.FC = () => {
   
-  const stats = [
-    { label: 'Active Donors', value: '150+', icon: Users, color: 'text-blue-500' },
-    { label: 'Ongoing Requests', value: '20', icon: Activity, color: 'text-red-500' },
-    { label: 'Blood Camps', value: '5', icon: Calendar, color: 'text-green-500' },
-    { label: 'Lives Saved', value: '500+', icon: Heart, color: 'text-pink-500' },
-  ];
+  const { t } = useTranslation();
+
+  const { user } = useAuth();
+  const [stats, setStats] = useState([
+    { label: 'Active Donors', value: '—', icon: Users, color: 'text-blue-500' },
+    { label: 'Ongoing Requests', value: '—', icon: Activity, color: 'text-red-500' },
+    { label: 'Blood Camps', value: '—', icon: Calendar, color: 'text-green-500' },
+    { label: 'Lives Saved', value: '—', icon: Heart, color: 'text-pink-500' },
+  ]);
 
   const whyDonate = [
     {
@@ -57,35 +63,50 @@ const HomePage: React.FC = () => {
     }
   ];
 
-  const upcomingBootcamps = [
-    {
-      id: 1,
-      title: 'City Hospital Blood Drive',
-      date: '2024-02-15',
-      time: '9:00 AM - 5:00 PM',
-      location: 'Downtown Community Center',
-      expectedDonors: 150,
-      image: 'https://images.unsplash.com/photo-1559757148-5c350d0d3c56?w=400&h=250&fit=crop'
-    },
-    {
-      id: 2,
-      title: 'University Blood Camp',
-      date: '2024-02-20',
-      time: '10:00 AM - 4:00 PM',
-      location: 'State University Campus',
-      expectedDonors: 200,
-      image: 'https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=400&h=250&fit=crop'
-    },
-    {
-      id: 3,
-      title: 'Corporate Wellness Drive',
-      date: '2024-02-25',
-      time: '8:00 AM - 6:00 PM',
-      location: 'Tech Park Business Center',
-      expectedDonors: 100,
-      image: 'https://images.unsplash.com/photo-1582750433449-648ed127bb54?w=400&h=250&fit=crop'
+  const [upcomingBootcamps, setUpcomingBootcamps] = useState<any[]>([]);
+
+  useEffect(() => {
+    // Load stats
+    fetch('http://localhost:5500/api/stats')
+      .then(res => res.json())
+      .then(data => {
+        setStats([
+          { label: 'Active Donors', value: String(data.activeDonors), icon: Users, color: 'text-blue-500' },
+          { label: 'Ongoing Requests', value: String(data.ongoingRequests), icon: Activity, color: 'text-red-500' },
+          { label: 'Blood Camps', value: String(data.bloodCamps), icon: Calendar, color: 'text-green-500' },
+          { label: 'Lives Saved', value: String(data.livesSaved), icon: Heart, color: 'text-pink-500' },
+        ]);
+      })
+      .catch(() => {/* keep placeholders */});
+
+    // Load camps
+    fetch('http://localhost:5500/api/bootcamps')
+      .then(res => res.json())
+      .then(data => setUpcomingBootcamps(data))
+      .catch(() => setUpcomingBootcamps([]));
+  }, []);
+
+  const registerForCamp = async (campId: number) => {
+    if (!user) {
+      toast.error('Please login as a donor to register');
+      return;
     }
-  ];
+    if (user.type !== 'donor') {
+      toast.error('Only donors can register for camps');
+      return;
+    }
+    try {
+      const res = await fetch(`http://localhost:5500/api/bootcamps/${campId}/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ donorId: user.id })
+      });
+      if (!res.ok) throw new Error('Failed');
+      toast.success('Registered for the camp');
+    } catch (err) {
+      toast.error('Could not register');
+    }
+  };
 
   const mythsFacts = [
     {
@@ -125,16 +146,16 @@ const HomePage: React.FC = () => {
                 >
                   <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                   <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    20 urgent requests nearby
+                    {t('home.heroTag')}
                   </span>
                 </motion.div>
                 
                 <h1 className="text-hero gradient-text leading-tight">
-                  Save Lives with a Drop
+                  {t('home.heroTitle')}
                 </h1>
                 
                 <p className="text-xl text-gray-600 dark:text-gray-300 max-w-lg">
-                  Connect with those in need. Every donation matters. Join our community of lifesavers.
+                  {t('home.heroDesc')}
                 </p>
               </div>
 
@@ -146,7 +167,7 @@ const HomePage: React.FC = () => {
                 >
                   <Link to="/login" className="btn-primary inline-flex items-center space-x-2 text-lg px-8 py-4">
                     <Heart className="h-5 w-5" />
-                    <span>Register as Donor</span>
+                    <span>{t('home.registerDonor')}</span>
                   </Link>
                 </motion.div>
                 
@@ -156,7 +177,7 @@ const HomePage: React.FC = () => {
                 >
                   <Link to="/login" className="btn-secondary inline-flex items-center space-x-2 text-lg px-8 py-4">
                     <Shield className="h-5 w-5" />
-                    <span>Hospital Login</span>
+                    <span>{t('home.hospitalLogin')}</span>
                   </Link>
                 </motion.div>
               </div>
@@ -180,7 +201,7 @@ const HomePage: React.FC = () => {
               >
                 <button className="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-full font-bold shadow-lg hover:shadow-xl transition-all duration-300 flex items-center space-x-2">
                   <AlertTriangle className="h-5 w-5" />
-                  <span>EMERGENCY SOS</span>
+                  <span>{t('app.sos')}</span>
                 </button>
               </motion.div>
             </motion.div>
@@ -271,7 +292,7 @@ const HomePage: React.FC = () => {
             className="text-center mb-16"
           >
             <h2 className="text-section gradient-text mb-4">
-              Why Donate Blood?
+              {t('home.whyDonate')}
             </h2>
             <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
               Your single act of kindness can create a ripple effect of hope and healing
@@ -313,7 +334,7 @@ const HomePage: React.FC = () => {
             className="text-center mb-16"
           >
             <h2 className="text-section gradient-text mb-4">
-              Upcoming Blood Camps
+              {t('home.upcoming')}
             </h2>
             <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
               Join our organized blood donation drives in your area
@@ -348,7 +369,7 @@ const HomePage: React.FC = () => {
                     <div className="absolute bottom-4 left-4 text-white">
                       <div className="flex items-center space-x-2 text-sm">
                         <Calendar className="h-4 w-4" />
-                        <span>{new Date(camp.date).toLocaleDateString()}</span>
+                        <span>{camp.date ? new Date(camp.date).toLocaleDateString() : ''}</span>
                       </div>
                     </div>
                   </div>
@@ -371,9 +392,9 @@ const HomePage: React.FC = () => {
                     
                     <div className="flex items-center justify-between">
                       <div className="text-sm text-gray-500 dark:text-gray-400">
-                        Expected: {camp.expectedDonors} donors
+                        {t('home.expected', { count: camp.expectedDonors })}
                       </div>
-                      <button className="btn-secondary text-sm">
+                      <button className="btn-secondary text-sm" onClick={() => registerForCamp(camp.id)}>
                         Register
                       </button>
                     </div>
