@@ -525,21 +525,33 @@ app.post('/api/bootcamps', async (req, res) => {
 
 app.post('/api/chat', async (req, res) => {
   const { message } = req.body;
-  if (!message) return res.status(400).json({ error: 'No message provided' });
+  console.log('Received chat message:', message);
+
+  if (!process.env.GEMINI_API_KEY) {
+    console.error('GEMINI_API_KEY not found in .env file');
+    return res.status(500).json({ error: 'Server configuration error: Missing API Key.' });
+  }
+
+  if (!message) {
+    console.log('Empty message received');
+    return res.status(400).json({ error: 'No message provided' });
+  }
 
   try {
-        const model = genAI.getGenerativeModel({ model: "gemini-pro" });
-    const result = await model.generateContent([message]);
-    const aiReply = result.response.text();
-    console.log("Gemini raw response:", aiReply);
-    if (!aiReply || aiReply.trim() === "") {
-      res.json({ reply: "Sorry, Gemini could not generate a response." });
-    } else {
-      res.json({ reply: aiReply });
-    }
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+    
+    console.log('Sending request to Gemini API...');
+    const result = await model.generateContent(message); // Pass message directly
+    const response = await result.response;
+    const aiReply = response.text();
+    
+    console.log("Gemini API response received:", aiReply);
+    res.json({ reply: aiReply });
+
   } catch (err) {
-    console.error("Gemini API error:", err);
-    res.status(500).json({ error: 'AI service error', details: err.message });
+    console.error("Error calling Gemini API:", err);
+    res.status(500).json({ error: 'An error occurred while communicating with the AI service.' });
   }
 });
 
