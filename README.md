@@ -24,7 +24,7 @@ AidGrid addresses the critical challenge of blood shortage by creating a digital
 | 👑 **Team Leader** | Amishi Verma | [@AmishiVerma](https://github.com/AmishiVerma) |
 | 👨‍💻 **Developer** | Aryan Upadhyay | [@UsaaryanByte07](https://github.com/UsaaryanByte07) |
 | 👩‍💻 **Developer** | Ishani Taishete | [@IshaniTaishete](https://github.com/IshaniTaishete) |
-| 👨‍💻 **Developer** | Vishwa Desai | [@VishwaDesai](https://github.com/Vishva-desai) |
+| 👨‍💻 **Developer** | Vishva Desai | [@VishwaDesai](https://github.com/Vishva-desai) |
 
 *Note: Please update the GitHub profile links above with the actual usernames*
 
