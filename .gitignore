@@ -12,6 +12,21 @@ dist
 dist-ssr
 *.local
 
+# Environment variables (CRITICAL FOR SECURITY)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+backend/.env
+backend/.env.local
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+backend/*.db
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -22,3 +37,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# OS generated files
+Thumbs.db
+*.tmp
+*.temp
