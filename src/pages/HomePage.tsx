@@ -126,7 +126,7 @@ const HomePage: React.FC = () => {
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
-      <section className="relative bg-gradient-to-br from-primary-50 via-white to-red-50 dark:from-gray-900 dark:via-gray-800 dark:to-red-900/20 pt-20 pb-32 overflow-hidden">
+      <section className="relative bg-gradient-to-br from-primary-50 via-white to-red-50 dark:from-gray-900 dark:via-gray-800 dark:to-red-900/20 pt-20 pb-32 overflow-hidden border-0">
         <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmOWZhZmIiIGZpbGwtb3BhY2l0eT0iMC4wNSI+PGNpcmNsZSBjeD0iMzAiIGN5PSIzMCIgcj0iNCIvPjwvZz48L2c+PC9zdmc+')] opacity-40"></div>
         
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -185,12 +185,7 @@ const HomePage: React.FC = () => {
               {/* SOS Alert Button */}
               <motion.div
                 animate={{ 
-                  scale: [1, 1.05, 1],
-                  boxShadow: [
-                    '0 0 0 0 rgba(239, 68, 68, 0.7)',
-                    '0 0 0 10px rgba(239, 68, 68, 0)',
-                    '0 0 0 0 rgba(239, 68, 68, 0)'
-                  ]
+                  scale: [1, 1.05, 1]
                 }}
                 transition={{ 
                   duration: 2,
@@ -206,48 +201,88 @@ const HomePage: React.FC = () => {
               </motion.div>
             </motion.div>
 
-            {/* Hero Image */}
+            {/* Animated Blood Bag */}
             <motion.div
               initial={{ opacity: 0, x: 50 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.8, delay: 0.2 }}
-              className="relative"
+              className="relative flex justify-center items-center"
             >
-              <div className="relative z-10">
-                <img
-                  src="https://images.unsplash.com/photo-1559757148-5c350d0d3c56?w=600&h=400&fit=crop"
-                  alt="Blood donation"
-                  className="rounded-3xl shadow-2xl"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-primary-500/20 to-transparent rounded-3xl"></div>
+              <div className="relative bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20 rounded-3xl p-8 shadow-2xl max-w-lg">
+                {/* Main Content Container */}
+                <div className="flex items-center space-x-6">
+                  {/* Heart Illustration */}
+                  <div className="relative flex items-center justify-center">
+                    <div className="w-32 h-32 relative">
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <Heart className="w-28 h-28 text-red-500 fill-current animate-pulse drop-shadow-lg" />
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Text Content */}
+                  <div className="flex-1 space-y-4">
+                    <div className="space-y-2">
+                      <h3 className="text-2xl font-bold text-red-700 dark:text-red-400 leading-tight">
+                        IT CAN<br/>
+                        MEAN THE<br/>
+                        WORLD TO<br/>
+                        SOMEONE<br/>
+                        IN NEED
+                      </h3>
+                    </div>
+                    
+                    <div className="pt-4">
+                      <span className="text-3xl font-black text-red-800 dark:text-red-300 tracking-wide">
+                        DONATE.
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Subtle background pattern */}
+                <div className="absolute inset-0 bg-gradient-to-r from-red-500/5 to-transparent rounded-3xl"></div>
+                
+                {/* Floating heart particles */}
+                <div className="absolute -top-2 -right-2 w-4 h-4 text-red-400 animate-pulse">
+                  <Heart className="w-full h-full fill-current" />
+                </div>
+                <div className="absolute top-1/3 -left-3 w-3 h-3 text-red-300 animate-pulse delay-1000">
+                  <Heart className="w-full h-full fill-current" />
+                </div>
+                <div className="absolute bottom-1/4 -right-4 w-5 h-5 text-red-500 animate-pulse delay-500">
+                  <Heart className="w-full h-full fill-current" />
+                </div>
+
+                {/* Floating Stats */}
+                <motion.div
+                  animate={{ y: [-10, 10, -10] }}
+                  transition={{ duration: 4, repeat: Infinity }}
+                  className="absolute -top-6 -right-6 bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-lg"
+                >
+                  <div className="flex items-center space-x-2">
+                    <CheckCircle className="h-6 w-6 text-green-500" />
+                    <span className="font-semibold text-gray-800 dark:text-white">150+ Donors</span>
+                  </div>
+                </motion.div>
+                
+                <motion.div
+                  animate={{ y: [10, -10, 10] }}
+                  transition={{ duration: 3, repeat: Infinity }}
+                  className="absolute -bottom-4 -left-4 bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-lg"
+                >
+                  <div className="flex items-center space-x-2">
+                    <Activity className="h-6 w-6 text-red-500" />
+                    <span className="font-semibold text-gray-800 dark:text-white">500+ Lives Saved</span>
+                  </div>
+                </motion.div>
               </div>
-              
-              {/* Floating Elements */}
-              <motion.div
-                animate={{ y: [-10, 10, -10] }}
-                transition={{ duration: 4, repeat: Infinity }}
-                className="absolute -top-6 -right-6 bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-lg"
-              >
-                <div className="flex items-center space-x-2">
-                  <CheckCircle className="h-6 w-6 text-green-500" />
-                  <span className="font-semibold text-gray-800 dark:text-white">150+ Donors</span>
-                </div>
-              </motion.div>
-              
-              <motion.div
-                animate={{ y: [10, -10, 10] }}
-                transition={{ duration: 3, repeat: Infinity }}
-                className="absolute -bottom-4 -left-4 bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-lg"
-              >
-                <div className="flex items-center space-x-2">
-                  <Activity className="h-6 w-6 text-red-500" />
-                  <span className="font-semibold text-gray-800 dark:text-white">500+ Lives Saved</span>
-                </div>
-              </motion.div>
             </motion.div>
           </div>
         </div>
       </section>
+
+
 
       {/* Stats Section */}
       <section className="py-16 bg-white dark:bg-gray-800 -mt-16 relative z-10">
