@@ -49,6 +49,50 @@ const ChatBot: React.FC = () => {
   };
 
 
+  // Get smart response based on user input
+  const getSmartResponse = (message: string): string => {
+    const lowerMessage = message.toLowerCase();
+    
+    if (lowerMessage.includes('eligible') || lowerMessage.includes('qualify')) {
+      return "To be eligible for blood donation, you must: be 18-65 years old, weigh at least 50kg, be in good health, not have donated in the last 56 days (8 weeks). Are you currently taking any medications or have any health conditions?";
+    }
+    
+    if (lowerMessage.includes('eat') || lowerMessage.includes('food') || lowerMessage.includes('before')) {
+      return "Before donating: eat iron-rich foods (spinach, red meat, beans), drink plenty of water, avoid fatty/greasy foods, get good sleep. Avoid alcohol 24 hours before donation. A good meal 3-4 hours before is ideal!";
+    }
+    
+    if (lowerMessage.includes('often') || lowerMessage.includes('how much') || lowerMessage.includes('frequency')) {
+      return "You can donate whole blood every 56 days (8 weeks). Platelet donations can be done every 7 days, up to 24 times per year. Your body needs time to replenish red blood cells!";
+    }
+    
+    if (lowerMessage.includes('find') || lowerMessage.includes('location') || lowerMessage.includes('where') || lowerMessage.includes('bank')) {
+      return "You can find nearby blood banks using our Search page! Click on 'Search' in the navigation menu to see interactive maps with verified blood banks and hospitals near you.";
+    }
+    
+    if (lowerMessage.includes('after') || lowerMessage.includes('care') || lowerMessage.includes('post')) {
+      return "After donation: rest for 15 minutes, drink lots of fluids, avoid heavy lifting for 24 hours, eat iron-rich foods, watch for dizziness. If you feel unwell, contact us immediately!";
+    }
+
+    if (lowerMessage.includes('register') || lowerMessage.includes('sign up') || lowerMessage.includes('join')) {
+      return "To register as a donor, click 'Register as Donor' on our homepage! You'll need to provide basic info, health details, and verify your email. It takes just 2-3 minutes!";
+    }
+
+    if (lowerMessage.includes('emergency') || lowerMessage.includes('urgent') || lowerMessage.includes('sos')) {
+      return "For medical emergencies requiring immediate blood, click the red 'EMERGENCY SOS' button on our homepage. This will alert nearby verified donors and hospitals instantly!";
+    }
+
+    if (lowerMessage.includes('types') || lowerMessage.includes('blood group') || lowerMessage.includes('compatibility')) {
+      return "Blood types: O- (universal donor), AB+ (universal recipient). O and A are most needed. Your blood type is determined during first donation. All types are valuable!";
+    }
+
+    if (lowerMessage.includes('time') || lowerMessage.includes('duration') || lowerMessage.includes('long')) {
+      return "The donation process takes about 45-60 minutes total: registration (10 min), health screening (15 min), actual donation (8-10 min), rest/refreshments (15 min). The needle part is quick!";
+    }
+
+    // Default helpful response
+    return "I'm here to help with blood donation questions! I can assist you with eligibility requirements, preparation tips, finding blood banks, post-donation care, registration process, and emergency procedures. What would you like to know?";
+  };
+
   // Unified send handler for both input and quick replies
   const handleSend = async (overrideText?: string) => {
     const textToSend = overrideText !== undefined ? overrideText : inputText;
@@ -65,35 +109,50 @@ const ChatBot: React.FC = () => {
     setInputText('');
     setIsTyping(true);
 
-    try {
-      const res = await fetch("http://localhost:5500/api/chat", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ message: textToSend }),
-      });
+    // Add a delay to make it feel more natural
+    setTimeout(async () => {
+      try {
+        // Try AI service first
+        const res = await fetch("http://localhost:5500/api/chat", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ message: textToSend }),
+        });
 
-      const data = await res.json();
-
-      const botMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        text: data.reply || "Sorry, I couldn't respond.",
-        isBot: true,
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, botMessage]);
-    } catch (err) {
-      const botMessage: Message = {
-        id: (Date.now() + 2).toString(),
-        text: "Error: Could not reach AI service.",
-        isBot: true,
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, botMessage]);
-    } finally {
-      setIsTyping(false);
-    }
+        if (res.ok) {
+          const data = await res.json();
+          if (data.reply && !data.reply.includes("error") && data.reply.length > 10) {
+            const botMessage: Message = {
+              id: (Date.now() + 1).toString(),
+              text: data.reply,
+              isBot: true,
+              timestamp: new Date(),
+            };
+            setMessages((prev) => [...prev, botMessage]);
+            setIsTyping(false);
+            return;
+          }
+        }
+        
+        // Fallback to smart local responses
+        throw new Error("AI service unavailable or poor response");
+        
+      } catch (err) {
+        // Use smart local response system
+        const smartResponse = getSmartResponse(textToSend);
+        const botMessage: Message = {
+          id: (Date.now() + 2).toString(),
+          text: smartResponse,
+          isBot: true,
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, botMessage]);
+      } finally {
+        setIsTyping(false);
+      }
+    }, 1000); // 1 second delay for natural feel
   };
 
   // Quick reply handler uses handleSend with override
@@ -131,13 +190,14 @@ const ChatBot: React.FC = () => {
               opacity: 1, 
               scale: isMinimized ? 0.8 : 1, 
               y: 0,
-              height: isMinimized ? '60px' : '500px'
+              height: isMinimized ? '60px' : '520px'
             }}
             exit={{ opacity: 0, scale: 0.8, y: 20 }}
-            className="fixed bottom-6 right-6 z-50 w-80 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden"
+            className="fixed bottom-6 right-6 z-50 w-80 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col"
+            style={{ height: isMinimized ? '60px' : '520px' }}
           >
             {/* Header */}
-            <div className="bg-gradient-to-r from-primary-500 to-primary-600 text-white p-4 flex items-center justify-between">
+            <div className="bg-gradient-to-r from-primary-500 to-primary-600 text-white p-4 flex items-center justify-between flex-shrink-0">
               <div className="flex items-center space-x-3">
                 <div className="relative">
                   <Bot className="h-8 w-8" />
@@ -167,7 +227,7 @@ const ChatBot: React.FC = () => {
             {!isMinimized && (
               <>
                 {/* Messages */}
-                <div className="h-80 overflow-y-auto p-4 space-y-4">
+                <div className="flex-1 overflow-y-auto p-4 space-y-4">
                     {messages.map((message) => (
                       <motion.div
                         key={message.id}
@@ -217,7 +277,7 @@ const ChatBot: React.FC = () => {
 
                 {/* Quick Replies */}
                 {messages.length <= 2 && (
-                  <div className="px-4 pb-2">
+                  <div className="px-4 pb-2 flex-shrink-0">
                     <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Quick questions:</p>
                     <div className="flex flex-wrap gap-1">
                       {quickReplies.map((reply, index) => (
@@ -233,8 +293,8 @@ const ChatBot: React.FC = () => {
                   </div>
                 )}
 
-                {/* Input */}
-                <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+                {/* Input - Always Visible at Bottom */}
+                <div className="flex-shrink-0 p-3 border-t border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-800">
                   <div className="flex items-center space-x-2">
                     <input
                       type="text"
@@ -242,12 +302,12 @@ const ChatBot: React.FC = () => {
                       onChange={(e) => setInputText(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && handleSend()}
                       placeholder="Type your message..."
-                      className="flex-1 p-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-gray-700 dark:text-white text-sm"
+                      className="flex-1 p-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-gray-700 dark:text-white text-sm"
                     />
                     <button
                       onClick={() => handleSend()}
                       disabled={!inputText.trim()}
-                      className="p-2 bg-primary-500 text-white rounded-xl hover:bg-primary-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      className="p-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 disabled:opacity-50 transition-colors"
                     >
                       <Send className="h-4 w-4" />
                     </button>
